@@ -1,29 +1,60 @@
-const axios = require("axios");
-const cheerio = require("cheerio");
+import axios from "axios"
+import cheerio from "cheerio"
 
-async function jktNews(lang = "id") {
-	try {
-		const { data } = await axios.get(`https://jkt48.com/news/list?lang=${lang}`);
-		const $ = cheerio.load(data);
+/* ===============================
+   JKT NEWS SCRAPER
+   AMBIL BERITA TERKINI
+================================ */
+async function jktNews() {
+  try {
+    const url = "https://jakarta.go.id/news"
 
-		const news = [];
-		$(".entry-news__list").each((index, element) => {
-			const title = $(element).find("h3 a").text().trim();
-			const link = $(element).find("h3 a").attr("href");
-			const date = $(element).find("time").text().trim();
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+      },
+    })
 
-			news.push({
-				title,
-				link: "https://jkt48.com" + link,
-				date,
-			});
-		});
+    const $ = cheerio.load(data)
+    const results = []
 
-		return news;
-	} catch (error) {
-		console.error("Terjadi kesalahan:", error);
-		return { error: error.message };
-	}
+    $(".news-list .news-item").each((_, el) => {
+      const title = $(el).find(".news-title").text().trim()
+      const date = $(el).find(".news-date").text().trim()
+      const link = $(el).find("a").attr("href")
+      const thumbnail = $(el).find("img").attr("src")
+
+      if (title && link) {
+        results.push({
+          title,
+          date,
+          link: link.startsWith("http")
+            ? link
+            : "https://jakarta.go.id" + link,
+          thumbnail,
+        })
+      }
+    })
+
+    if (!results.length) {
+      throw new Error("no news found")
+    }
+
+    return {
+      source: "jakarta.go.id",
+      total: results.length,
+      news: results,
+    }
+  } catch (e) {
+    throw new Error(e.message)
+  }
 }
 
-module.exports = jktNews;
+/* ===============================
+   HANDLER (WAJIB)
+================================ */
+export async function handler() {
+  // jktNews tidak butuh query
+  return await jktNews()
+}
