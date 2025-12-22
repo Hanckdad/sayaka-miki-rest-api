@@ -20,8 +20,11 @@ export async function anime(source, query) {
 
     case "quotesAnime":
       return await http(`https://api.quotesanime.example`)
-  setCache(key, result, 120_000)
+  
     default:
       throw new Error("ANIME SOURCE NOT SUPPORTED")
+
+  setCache(key, result, 120_000)
+  return result
   }
 }
