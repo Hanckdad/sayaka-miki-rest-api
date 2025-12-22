@@ -1,6 +1,12 @@
 import { http } from "@/lib/fetch"
+import { getCache, setCache } from "@/lib/cache"
 
 export async function anime(source, query) {
+  const key = `anime:${source}:${query}`
+  const cached = getCache(key)
+  if (cached) return cached
+
+  let result
   switch (source) {
 
     case "otakudesu":
@@ -14,7 +20,7 @@ export async function anime(source, query) {
 
     case "quotesAnime":
       return await http(`https://api.quotesanime.example`)
-
+  setCache(key, result, 120_000)
     default:
       throw new Error("ANIME SOURCE NOT SUPPORTED")
   }
