@@ -1,101 +1,70 @@
-const axios = require("axios");
-const cheerio = require("cheerio");
+import axios from "axios"
+import cheerio from "cheerio"
 
-const halodoc = (penyakit = null) => {
-    const baseSearchArtikel = `https://www.halodoc.com/artikel/search/${penyakit}`;
-    const obatBaseUrl = `https://www.halodoc.com/obat-dan-vitamin/search/${penyakit}`;
+/* ===============================
+   HALODOC ARTICLE SCRAPER
+   SEARCH BERDASARKAN KEYWORD
+================================ */
+async function halodocSearch(keyword) {
+  try {
+    if (!keyword) throw new Error("query is required")
 
-    const getArtikelSearch = async () => {
-        try {
-            const { data } = await axios.get(baseSearchArtikel);
-            const $ = cheerio.load(data);
-            const articles = [];
+    const url = `https://www.halodoc.com/artikel/search/${encodeURIComponent(
+      keyword
+    )}`
 
-            $("magneto-card").each((index, element) => {
-                const title = $(element).find("header a").text().trim();
-                const description = $(element).find(".description").text().trim();
-                const link = $(element).find("header a").attr("href");
-                const image = $(element).find("picture img").attr("src");
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+      },
+    })
 
-                if (title && link) {
-                    articles.push({
-                        title,
-                        description,
-                        link: `https://www.halodoc.com${link}`,
-                        image,
-                    });
-                }
-            });
+    const $ = cheerio.load(data)
+    const results = []
 
-            return articles;
-        } catch (error) {
-            console.error("Error fetching articles:", error.message);
-            return [];
-        }
-    };
+    $("a.article-card").each((_, el) => {
+      const title = $(el).find("h3").text().trim()
+      const excerpt = $(el).find("p").text().trim()
+      const link =
+        "https://www.halodoc.com" + $(el).attr("href")
 
-    const getObatSearch = async () => {
-        try {
-            const { data } = await axios.get(obatBaseUrl);
-            const $ = cheerio.load(data);
-            const obatList = [];
+      if (title && link) {
+        results.push({
+          title,
+          excerpt,
+          link,
+        })
+      }
+    })
 
-            $("li.custom-container__list__container").each((index, element) => {
-                const title = $(element).find(".hd-base-product-search-card__title").text().trim();
-                const subtitle = $(element).find(".hd-base-product-search-card__subtitle").text().trim();
-                const price = $(element).find(".hd-base-product-search-card__price").text().trim();
-                const image = $(element).find(".hd-base-image-mapper__img").attr("src");
-                const link = $(element).find(".hd-base-product-search-card__content a").attr("href");
-
-                if (title && link) {
-                    obatList.push({
-                        title,
-                        subtitle,
-                        price,
-                        image,
-                        link: `https://www.halodoc.com${link}`,
-                    });
-                }
-            });
-
-            return obatList;
-        } catch (error) {
-            console.error("Error fetching medicines:", error.message);
-            return [];
-        }
-    };
-
-    const getDetailUrl = async (url) => {
-        try {
-            const { data } = await axios.get(url);
-            const $ = cheerio.load(data);
-
-            const title = $("h3.section-header__content-text-title").text().trim();
-            const subheadline = $(".article-page__article-subheadline").text().trim();
-            const summary = $(".article-page__summary").text().trim();
-            const reviewer = $(".article-page__reviewer").text().trim();
-            const readTime = $(".article-page__reading-time").text().trim();
-            const image = $(".article-page__image-container img").attr("src");
-
-            return {
-                title,
-                subheadline,
-                summary,
-                review: reviewer,
-                readTime,
-                imageBase64: image,
-            };
-        } catch (error) {
-            console.error("Error fetching article details:", error.message);
-            return null;
-        }
-    };
+    if (!results.length) {
+      throw new Error("no article found")
+    }
 
     return {
-        getArtikelSearch,
-        getObatSearch,
-        getDetailUrl,
-    };
-};
+      source: "halodoc.com",
+      keyword,
+      total: results.length,
+      articles: results,
+    }
+  } catch (e) {
+    throw new Error(e.message)
+  }
+}
 
-module.exports = halodoc;
+/* ===============================
+   HANDLER (WAJIB)
+================================ */
+export async function handler(query) {
+  /**
+   * PARAM:
+   * ?q=flu
+   */
+
+  if (!query.q) {
+    throw new Error("parameter q is required")
+  }
+
+  return await halodocSearch(query.q)
+}
