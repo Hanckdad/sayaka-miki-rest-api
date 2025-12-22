@@ -1,6 +1,12 @@
 import { http } from "@/lib/fetch"
+import { getCache, setCache } from "@/lib/cache"
 
 export async function tools(type, payload) {
+  const key = `tools:${type}:${payload}`
+  const cached = getCache(key)
+  if (cached) return cached
+
+  let result
   switch (type) {
 
     case "upscale":
@@ -23,5 +29,7 @@ export async function tools(type, payload) {
 
     default:
       throw new Error("TOOLS TYPE NOT SUPPORTED")
+  setCache(key, result, 120_000)
+  return result
   }
 }
