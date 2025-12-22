@@ -1,85 +1,141 @@
 "use client"
 
 import { useState } from "react"
-import { apiList } from "@/lib/apiList"
+
+const endpoints = [
+  {
+    name: "Downloader",
+    path: "/api/v1/downloader",
+    method: "POST",
+    body: `{
+  "type": "tiktok",
+  "url": "https://..."
+}`
+  },
+  {
+    name: "Tools",
+    path: "/api/v1/tools",
+    method: "POST",
+    body: `{
+  "type": "base64",
+  "text": "hello"
+}`
+  },
+  {
+    name: "Scraper",
+    path: "/api/v1/scraper",
+    method: "POST",
+    body: `{
+  "source": "google",
+  "query": "openai"
+}`
+  },
+  {
+    name: "Anime",
+    path: "/api/v1/anime",
+    method: "POST",
+    body: `{
+  "source": "search",
+  "query": "naruto"
+}`
+  },
+  {
+    name: "Info",
+    path: "/api/v1/info",
+    method: "POST",
+    body: `{
+  "type": "ping"
+}`
+  }
+]
 
 export default function DocsPage() {
-  const [logs, setLogs] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [active, setActive] = useState(null)
+  const [apiKey, setApiKey] = useState("")
+  const [active, setActive] = useState(0)
+  const [body, setBody] = useState(endpoints[0].body)
+  const [log, setLog] = useState("")
 
-  const tryApi = async (api, index) => {
-    setActive(index)
-    setLoading(true)
-    setLogs(null)
-
-    const res = await fetch("/api/try", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: api.endpoint,
-        method: api.method,
-        body: api.body
+  async function run() {
+    setLog("Loading...")
+    try {
+      const res = await fetch(endpoints[active].path, {
+        method: endpoints[active].method,
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey
+        },
+        body
       })
-    })
 
-    const data = await res.json()
-    setLogs(data)
-    setLoading(false)
+      const json = await res.json()
+      setLog(JSON.stringify(json, null, 2))
+    } catch (e) {
+      setLog(e.message)
+    }
   }
 
   return (
-    <main className="min-h-screen px-10 py-10">
-      <h1 className="text-3xl font-bold mb-2">API Documentation</h1>
-      <p className="text-zinc-400 mb-8">
-    All endpoints below can be tried directly (Try API)
-      </p>
+    <div className="min-h-screen bg-zinc-950 text-white p-10">
+      <h1 className="text-4xl font-bold mb-6">API Documentation</h1>
 
-      <div className="space-y-6">
-        {apiList.map((api, i) => (
-          <div
-            key={i}
-            className="border border-zinc-800 rounded-lg p-6"
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold">{api.name}</h2>
-                <p className="text-sm text-zinc-400">
-                  {api.method} {api.endpoint}
-                </p>
-              </div>
-
-              <button
-                onClick={() => tryApi(api, i)}
-                className="px-4 py-2 bg-white text-black rounded"
-              >
-                {loading && active === i ? "Running..." : "Try API"}
-              </button>
-            </div>
-
-            {api.description && (
-              <p className="text-sm text-zinc-500 mt-2">
-                {api.description}
-              </p>
-            )}
-
-            {api.body && (
-              <pre className="bg-zinc-900 p-3 mt-3 text-sm rounded overflow-x-auto">
-{JSON.stringify(api.body, null, 2)}
-              </pre>
-            )}
-          </div>
-        ))}
+      {/* API KEY */}
+      <div className="mb-6">
+        <input
+          placeholder="Your API Key"
+          className="w-full max-w-md p-2 rounded bg-zinc-900 border border-zinc-800"
+          onChange={e => setApiKey(e.target.value)}
+        />
       </div>
 
-      {logs && (
-        <div className="mt-10">
-          <h3 className="text-xl font-bold mb-3">Logs Output</h3>
-          <pre className="bg-zinc-900 p-4 rounded text-sm overflow-x-auto">
-{JSON.stringify(logs, null, 2)}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* SIDEBAR */}
+        <aside className="space-y-2">
+          {endpoints.map((ep, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setActive(i)
+                setBody(ep.body)
+                setLog("")
+              }}
+              className={`w-full text-left p-3 rounded ${
+                active === i
+                  ? "bg-white text-black"
+                  : "bg-zinc-900"
+              }`}
+            >
+              {ep.name}
+            </button>
+          ))}
+        </aside>
+
+        {/* TRY IT */}
+        <section className="md:col-span-2 space-y-4">
+          <div className="text-sm text-zinc-400">
+            <b>{endpoints[active].method}</b>{" "}
+            {endpoints[active].path}
+          </div>
+
+          <textarea
+            rows={8}
+            className="w-full p-3 bg-zinc-900 rounded border border-zinc-800 font-mono text-sm"
+            value={body}
+            onChange={e => setBody(e.target.value)}
+          />
+
+          <button
+            onClick={run}
+            className="bg-white text-black px-6 py-2 rounded"
+          >
+            Try It
+          </button>
+
+          {/* RESPONSE */}
+          <pre className="bg-black p-4 rounded border border-zinc-800 text-xs overflow-auto max-h-96">
+{log}
           </pre>
-        </div>
-      )}
-    </main>
+        </section>
+      </div>
+    </div>
   )
 }
