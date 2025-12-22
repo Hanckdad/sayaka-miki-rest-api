@@ -1,65 +1,117 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
+import axios from "axios"
+import cheerio from "cheerio"
 
-async function komiku(type = "manga", name) {
-	try {
-		const { data } = await axios.get(`https://api.komiku.id/?post_type=${type}&s=${name}&APIKEY=undefined`);
-		const $ = cheerio.load(data);
+/* ===============================
+   KOMIKU SCRAPER
+   SEARCH KOMIK
+================================ */
+async function komikuSearch(keyword) {
+  try {
+    if (!keyword) throw new Error("query is required")
 
-		const mangaList = [];
-		$('.bge').each((i, elem) => {
-			const title = $(elem).find('h3').text().trim();
-			const genre = $(elem).find('.tpe1_inf b').text().trim();
-			const description = $(elem).find('p').text().trim();
-			const imageUrl = $(elem).find('img').attr('src');
-			const mangaUrl = $(elem).find('a').attr('href');
+    const url = `https://komiku.id/?s=${encodeURIComponent(keyword)}`
 
-			mangaList.push({
-				title,
-				genre,
-				description,
-				img: imageUrl,
-				url: "https://komiku.id/" + mangaUrl,
-			});
-		});
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+      },
+    })
 
-		return mangaList;
-	} catch (error) {
-		console.error("Terjadi kesalahan:", error);
-		return { error: error.message };
-	}
+    const $ = cheerio.load(data)
+    const results = []
+
+    $(".daftar .bge").each((_, el) => {
+      const title = $(el).find(".kan h3").text().trim()
+      const link = $(el).find("a").attr("href")
+      const thumbnail = $(el).find("img").attr("data-src") || $(el).find("img").attr("src")
+      const type = $(el).find(".kan .ls2").text().trim() || null
+
+      if (title && link) {
+        results.push({
+          title,
+          type,
+          link,
+          thumbnail,
+        })
+      }
+    })
+
+    if (!results.length) {
+      throw new Error("comic not found")
+    }
+
+    return {
+      source: "komiku.id",
+      keyword,
+      total: results.length,
+      results,
+    }
+  } catch (e) {
+    throw new Error(e.message)
+  }
 }
 
-async function detail(url) {
-	try {
-		const { data } = await axios.get(url);
-		const $ = cheerio.load(data);
+/* ===============================
+   KOMIKU UPDATE TERBARU
+================================ */
+async function komikuLatest() {
+  try {
+    const url = "https://komiku.id/"
 
-		const title = $('span[itemprop="name"]').text().trim();
-		const description = $('p[itemprop="description"]').text().trim();
-		const awalChapter = $('a[title*="Chapter 01"]').text().trim();
-		const terbaruChapter = $('a[title*="Chapter 165"]').text().trim();
-		const coverImage = $('img[itemprop="image"]').attr('src');
-		const genres = [];
-		$('ul.genre li').each((i, el) => {
-			genres.push($(el).text().trim());
-		});
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+      },
+    })
 
-		return {
-			title,
-			description,
-			awalChapter,
-			newChapter: terbaruChapter,
-			coverImage,
-			genres,
-		};
-	} catch (error) {
-		console.error("Terjadi kesalahan:", error);
-		return { error: error.message };
-	}
+    const $ = cheerio.load(data)
+    const results = []
+
+    $(".bge").each((_, el) => {
+      const title = $(el).find(".kan h3").text().trim()
+      const chapter = $(el).find(".kan .ls2").text().trim()
+      const link = $(el).find("a").attr("href")
+      const thumbnail = $(el).find("img").attr("data-src") || $(el).find("img").attr("src")
+
+      if (title && link) {
+        results.push({
+          title,
+          chapter,
+          link,
+          thumbnail,
+        })
+      }
+    })
+
+    if (!results.length) {
+      throw new Error("no latest comic found")
+    }
+
+    return {
+      source: "komiku.id",
+      total: results.length,
+      latest: results,
+    }
+  } catch (e) {
+    throw new Error(e.message)
+  }
 }
 
-module.exports = {
-	komiku,
-	detail
-};
+/* ===============================
+   HANDLER (WAJIB)
+================================ */
+export async function handler(query) {
+  /**
+   * MODE:
+   * ?q=one piece → search komik
+   * /komiku     → update terbaru
+   */
+
+  if (query.q) {
+    return await komikuSearch(query.q)
+  }
+
+  return await komikuLatest()
+}
