@@ -1,43 +1,52 @@
-const cheerio = require("cheerio");
-const { fetch } = require("undici");
-const { lookup } = require("mime-types");
+import axios from "axios"
+import cheerio from "cheerio"
 
-async function mediaFire(url) {
-	try {
-		const response = await fetch(url);
-		const html = await response.text();
-		const $ = cheerio.load(html);
+/* ===============================
+   MEDIAFIRE DOWNLOADER
+   SCRAPE DATA (ASLI DARI FILE LU)
+================================ */
+async function mediafireDownloader(url) {
+  try {
+    if (!url) throw new Error("url is required")
+    if (!url.includes("mediafire.com")) {
+      throw new Error("invalid mediafire url")
+    }
 
-		const typeElement = $(".dl-btn-cont").find(".icon");
-		const type = typeElement.length
-			? typeElement.attr("class").split("archive")[1].trim()
-			: null;
+    const { data } = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+      },
+    })
 
-		const filename = $(".dl-btn-label").attr("title") || "unknown";
-		const sizeText = $('.download_link .input').text().trim();
-		const size = sizeText ? sizeText.match(/(.*?)/)?.[1] : null;
+    const $ = cheerio.load(data)
 
-		const ext = filename.split(".").pop();
-		const mimetype =
-			lookup(ext.toLowerCase()) || "application/" + ext.toLowerCase();
+    const title = $("div.filename").text().trim()
+    const size = $("div.details").text().trim().split("•")[1]?.trim() || null
+    const date = $("div.details").text().trim().split("•")[0]?.trim() || null
+    const downloadLink = $("a#downloadButton").attr("href")
 
-		const downloadElement = $(".input");
-		const download = downloadElement.length ? downloadElement.attr("href") : null;
+    if (!downloadLink) throw new Error("failed to get download link")
 
-		return {
-			filename,
-			type,
-			size,
-			ext,
-			mimetype,
-			download,
-		};
-	} catch (error) {
-		throw {
-			msg: "Gagal mengambil data dari link tersebut",
-			error,
-		};
-	}
+    return {
+      status: "success",
+      title,
+      size,
+      date,
+      download: downloadLink,
+    }
+  } catch (err) {
+    throw new Error(err.message)
+  }
 }
 
-module.exports = mediaFire;
+/* ===============================
+   HANDLER UNTUK ROUTE /api/v1/mediafire
+================================ */
+export async function handler(query) {
+  if (!query.url) {
+    throw new Error("url is required")
+  }
+
+  return await mediafireDownloader(query.url)
+}
