@@ -1,13 +1,24 @@
 import { NextResponse } from "next/server"
 import { rateLimit } from "@/lib/limit"
+import { limitInfo } from "@/lib/limitInfo"
 import { tools } from "@/src/services/tools.service"
 
 export async function POST(req) {
   try {
-    const ip = req.headers.get("x-forwarded-for") || "unknown"
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0] ||
+      req.ip ||
+      "unknown"
+
     if (rateLimit(ip)) {
+      const info = limitInfo(ip)
       return NextResponse.json(
-        { success: false, message: "Rate limit exceeded" },
+        {
+          success: false,
+          message: "Rate limit exceeded",
+          tier: info.tier,
+          limit: info.limit
+        },
         { status: 429 }
       )
     }
@@ -21,7 +32,12 @@ export async function POST(req) {
     }
 
     const data = await tools(body.type, body)
-    return NextResponse.json({ success: true, data })
+
+    return NextResponse.json({
+      success: true,
+      tier: limitInfo(ip).tier,
+      data
+    })
 
   } catch (err) {
     return NextResponse.json(
