@@ -14,34 +14,33 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
 
-    // UI & Animation
+    
     "lucide-react": "^0.460.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
     "framer-motion": "^11.0.24",
 
-    // API / HTTP / Scraper
+   
     "axios": "^1.7.7",
     "cheerio": "^1.0.0-rc.12",
     "form-data": "^4.0.0",
     "node-fetch": "^3.3.2",
 
-    // Utils
+   
     "uuid": "^9.0.1",
     "multer": "^1.4.5-lts.1",
 
-    // Rate-limit & security
+    
     "express-rate-limit": "^7.4.0",
     "memory-cache": "^0.2.0",
 
-    // Redis / session (opsional tapi siap pakai)
+   
     "ioredis": "^5.4.2",
 
-    // File & media
+  
     "ffmpeg-static": "^5.2.0",
     "fluent-ffmpeg": "^2.1.2",
-
-    // Environment
+   
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
