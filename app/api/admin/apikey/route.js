@@ -1,30 +1,25 @@
-import { NextResponse } from "next/server"
-import { verifySession } from "@/lib/adminSession"
-import { addKey, deleteKey } from "@/lib/apikey"
-import crypto from "crypto"
+import { verifySession } from "@/lib/adminSession";
+import { addKey, deleteKey, listKeys } from "@/lib/apikey";
+
+export async function GET() {
+  if (!verifySession()) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  return Response.json(listKeys());
+}
 
 export async function POST(req) {
-  if (!(await verifySession(req)))
-    return NextResponse.json({ success: false }, { status: 401 })
+  if (!verifySession()) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { tier } = await req.json()
-  const key = crypto.randomBytes(16).toString("hex")
+  const { label } = await req.json();
+  const key = addKey(label || "new-key");
 
-  addKey(key, tier)
-
-  return NextResponse.json({
-    success: true,
-    apikey: key,
-    tier
-  })
+  return Response.json({ key });
 }
 
 export async function DELETE(req) {
-  if (!(await verifySession(req)))
-    return NextResponse.json({ success: false }, { status: 401 })
+  if (!verifySession()) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { key } = await req.json()
-  deleteKey(key)
+  const { key } = await req.json();
+  deleteKey(key);
 
-  return NextResponse.json({ success: true })
+  return Response.json({ success: true });
 }
